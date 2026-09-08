@@ -10,6 +10,8 @@ from common import (
     SERVICE_NAME
 )
 
+from analytics_dashboard import render_dashboard
+
 st.set_page_config(page_title=SERVICE_NAME, layout="centered")
 
 st.session_state.setdefault("access_token", None) # RLS 적용한 /me 라우터용
@@ -27,12 +29,20 @@ st.session_state.setdefault("expired_notice", None)
 # 답을 못 받은 질문. `다시 시도` 버튼이 이것을 쓴다.
 st.session_state.setdefault("failed_question", None)
 
+# 현재 페이지 상태
+st.session_state.setdefault("current_page", "chat")
+
 # 시작 질문 예시
 EXAMPLE_QUESTIONS = [
     "예제 질문1 - 대화를 시작해 주세요.",
     "예제 질문2",
     "예제 질문3",
 ]
+
+def on_conversation_change() -> None:
+    st.session_state.conversation_id = st.session_state.conversation_select
+    st.session_state.current_page = "chat"
+
 
 def render_sidebar(conversations: list) -> None:
     """왼쪽: 내가 누구인지 + ."""
@@ -60,6 +70,7 @@ def render_sidebar(conversations: list) -> None:
                 format_func=lambda cid: labels[cid],
                 index=ids.index(current) if current in ids else 0,
                 key="conversation_select",
+                on_change=on_conversation_change,
             )
             # 세션에 사용자가 선택한 대화id를 저장한다.
             st.session_state.conversation_id = selected
@@ -76,9 +87,10 @@ def render_sidebar(conversations: list) -> None:
         job_title = st.text_input("대화 제목", placeholder="예:회사 연차 일년에 몇 개 주나요?")
 
         # 버튼 클릭 & 직무 입력 확인
-        if st.button("대화 시작", use_container_width=True) and job_title:
+        if st.button("새 대화", use_container_width=True) and job_title:
             # 대화 생성 엔드포인트 호출
             try:
+                st.session_state.current_page = "chat"
                 created = api(
                     "POST",
                     "/me/conversations",
@@ -90,7 +102,11 @@ def render_sidebar(conversations: list) -> None:
                 return
             
             st.session_state.conversation_id = created["id"]
-            st.rerun()          
+            st.rerun()
+
+        if st.button("로그 및 데이터 분석", use_container_width=True):
+            st.session_state.current_page = "analytics"
+                                      
 
 def render_empty(message: str, hint: str) -> None:
     """빈 화면은 "없다"가 아니라 "다음에 무엇을 하면 되는지"를 말해야 한다."""
@@ -241,6 +257,12 @@ def render_signed_in() -> None:
     conversations = api("GET", "/me/conversations", headers=auth_headers())
     render_sidebar(conversations)
 
+    # 로그 및 데이터 분석
+    if st.session_state.current_page == "analytics":
+        render_dashboard()
+        return    
+
+    # 챗봇
     if not conversations:
         render_empty(
             "아직 대화 기록이 없습니다.",
@@ -256,14 +278,13 @@ def render_signed_in() -> None:
     else:
         render_conversation(st.session_state.conversation_id)
 
-st.title(SERVICE_NAME)
-
 try:
     if st.session_state.access_token:
         # 대화목록으로 사이드바 렌더링
         render_signed_in()
     else:
         # 로그인 페이지 렌더링
+        st.title(SERVICE_NAME)
         render_login()
 except SessionExpired as error:
     sign_out(str(error))
