@@ -39,74 +39,92 @@ EXAMPLE_QUESTIONS = [
     "예제 질문3",
 ]
 
-def on_conversation_change() -> None:
-    st.session_state.conversation_id = st.session_state.conversation_select
+def on_conversation_change(conversation_id: str) -> None:
+    st.session_state.conversation_id = conversation_id
     st.session_state.current_page = "chat"
 
 
 def render_sidebar(conversations: list) -> None:
-    """왼쪽: 내가 누구인지 + ."""
+    st.markdown(
+        """
+        <style>
+        [data-testid="stSidebarContent"] {
+            overflow: hidden;
+        }
+        [data-testid="stSidebar"] .st-key-sidebar_conversations {
+            height: auto;
+            max-height: max(120px, calc(100dvh - 390px));
+            overflow-y: auto;
+            overflow-x: hidden;
+            overscroll-behavior: contain;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
     with st.sidebar:
-        # 로그인한 사용자 이메일 출력
-        st.caption(st.session_state.user_email)
-        if st.button("로그아웃", use_container_width=True):
-            sign_out()
+        with st.container(key="sidebar_navigation"):
+            # 로그인한 사용자 이메일 출력
+            # st.caption(st.session_state.user_email)
 
-        st.divider()        
-
-        st.subheader("대화 기록")
-
-        if conversations:
-            labels = {c["id"]: conversation_label(c) for c in conversations}
-            ids = list(labels)
-
-            # 주의: index 와 key 를 지정하지 않으면 화면을 다시 그릴 때 선택이 풀린다.
-            current = st.session_state.conversation_id
-
-            #선택위젯을 그리고, 사용자가 특정 대화를 선택하면 selected에 저장한다.
-            selected = st.selectbox(
-                "이전 대화 내역",
-                options=ids,
-                format_func=lambda cid: labels[cid],
-                index=ids.index(current) if current in ids else 0,
-                key="conversation_select",
-                on_change=on_conversation_change,
-            )
-            # 세션에 사용자가 선택한 대화id를 저장한다.
-            st.session_state.conversation_id = selected
-
-            if st.button("삭제", use_container_width=True):
-                api("DELETE", f"/me/conversations/{selected}", headers=auth_headers())
-                st.session_state.conversation_id = None
-                st.rerun()
-        else:
-            st.caption("대화를 시작하세요.")    
-
-        # 새로운 대화 시작
-        st.divider()
-        job_title = st.text_input("대화 제목", placeholder="예:회사 연차 일년에 몇 개 주나요?")
-
-        # 버튼 클릭 & 직무 입력 확인
-        if st.button("새 대화", use_container_width=True) and job_title:
-            # 대화 생성 엔드포인트 호출
-            try:
+            if st.button("홈", use_container_width=True):
                 st.session_state.current_page = "chat"
-                created = api(
-                    "POST",
-                    "/me/conversations",
-                    json={"title": job_title},
-                    headers=auth_headers(),
-                )
-            except ApiError as error:
-                st.error(str(error))
-                return
-            
-            st.session_state.conversation_id = created["id"]
-            st.rerun()
 
-        if st.button("로그 및 데이터 분석", use_container_width=True):
-            st.session_state.current_page = "analytics"
-                                      
+            # 1. 새 대화 버튼
+            if st.button("새 대화", use_container_width=True):
+            # and job_title:
+                # 대화 생성 엔드포인트 호출
+                try:
+                    st.session_state.current_page = "chat"
+                    created = api(
+                        "POST",
+                        "/me/conversations",
+                        # 첫 사용자 메시지를 저장할 때 백엔드가 제목을 갱신한다.
+                        json={"title": "새 대화"},
+                        headers=auth_headers(),
+                    )
+                except ApiError as error:
+                    st.error(str(error))
+                    return
+
+                st.session_state.conversation_id = created["id"]
+                st.rerun()
+
+            # 2. 로그 및 데이터 분석 버튼
+            if st.button("로그 및 데이터 분석", use_container_width=True):
+                st.session_state.current_page = "analytics"
+
+            if st.button("로그아웃", use_container_width=True):
+                sign_out()
+
+        st.divider()
+
+        st.subheader("최근 대화")
+
+        with st.container(key="sidebar_conversations"):
+            if conversations:
+                labels = {c["id"]: conversation_label(c) for c in conversations}
+                ids = list(labels)
+
+                # 처음 진입하거나 선택한 대화가 사라졌다면 첫 대화를 선택한다.
+                if st.session_state.conversation_id not in ids:
+                    st.session_state.conversation_id = ids[0]
+
+                for conversation_id in ids:
+                    st.button(
+                        labels[conversation_id],
+                        key=f"conversation_{conversation_id}",
+                        use_container_width=True,
+                        type="primary" if (
+                            st.session_state.current_page == "chat"
+                            and st.session_state.conversation_id == conversation_id
+                        ) else "secondary",
+                        on_click=on_conversation_change,
+                        args=(conversation_id,),
+                    )
+            else:
+                st.caption("대화를 시작하세요.")
+
 
 def render_empty(message: str, hint: str) -> None:
     """빈 화면은 "없다"가 아니라 "다음에 무엇을 하면 되는지"를 말해야 한다."""
@@ -153,7 +171,7 @@ def render_examples(conversation_id: str) -> None:
 
 def render_conversation(conversation_id: str) -> None:
     """가운데: 주고받은 내용과 입력칸."""
-    
+
     messages = api("GET", f"/conversations/{conversation_id}/messages", headers=auth_headers())
 
     if not messages:
@@ -223,7 +241,7 @@ def render_login() -> None:
 
     if not result.get("access_token"):
         # 가입은 됐는데 토큰이 없는 경우가 있다 (이메일 확인이 켜져 있을 때).
-        st.error("가입은 되었지만 바로 로그인되지 않았습니다. 강사에게 알리세요.")
+        st.error("가입은 되었지만 바로 로그인되지 않았습니다.")
         return
 
     st.session_state.access_token = result["access_token"]
@@ -268,7 +286,7 @@ def render_signed_in() -> None:
             "아직 대화 기록이 없습니다.",
             "`새 대화 시작` 을 누르세요.",
         )
-    # 방어 가지. selectbox 가 첫 항목을 자동으로 고르므로 평소에는 닿지 않는다.
+    # 방어 가지. 사이드바에서 첫 항목을 자동으로 고르므로 평소에는 닿지 않는다.
     # 목록이 있는데 선택이 비면 render_conversation(None) 이 되어 422 가 난다.
     elif not st.session_state.conversation_id:
         render_empty(
