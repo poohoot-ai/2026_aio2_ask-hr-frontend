@@ -130,11 +130,5 @@ def auth_headers() -> dict:
     return {"Authorization": f"Bearer {st.session_state.access_token}"}
 
 def conversation_label(conversation: dict) -> str:
-    """목록에 보여줄 한 줄.
-
-    제목만 쓰면 같은 내용으로 두 번 실행했을 때 둘을 구분할 수 없다.
-    만든 시각과 id 앞자리를 붙여서 구분되게 한다.
-    """
-    title = conversation.get("title") or "(제목 없음)"
-    created = conversation["created_at"][:19].replace("T", " ")
-    return f"{title} · {created} · {conversation['id'][:8]}"
+    """대화 목록에는 제목만 표시한다."""
+    return conversation.get("title") or "(제목 없음)"

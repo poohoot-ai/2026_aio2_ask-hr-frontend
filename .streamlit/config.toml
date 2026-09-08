@@ -1,0 +1,37 @@
+# AskHR: Slack에서 영감을 받은 자주색 워크스페이스 테마.
+# 우측 상단 Settings > Theme에서 라이트/다크 모드를 전환한다.
+[theme]
+font = "sans-serif"
+baseRadius = "0.5rem"
+buttonRadius = "0.5rem"
+showWidgetBorder = true
+showSidebarBorder = true
+
+[theme.light]
+primaryColor = "#611F69"
+backgroundColor = "#FFFFFF"
+secondaryBackgroundColor = "#F5F5F5"
+textColor = "#1D1C1D"
+borderColor = "#D7D5D8"
+linkColor = "#611F69"
+
+[theme.light.sidebar]
+backgroundColor = "#4A154B"
+secondaryBackgroundColor = "#59265A"
+textColor = "#FFFFFF"
+primaryColor = "#7C3F83"
+borderColor = "#744575"
+
+[theme.dark]
+primaryColor = "#87508F"
+backgroundColor = "#1A1D21"
+secondaryBackgroundColor = "#222529"
+textColor = "#E8E8E8"
+borderColor = "#45484D"
+linkColor = "#E8B9EF"
+
+[theme.dark.sidebar]
+backgroundColor = "#211522"
+secondaryBackgroundColor = "#362339"
+textColor = "#E8E8E8"
+primaryColor = "#87508F"
