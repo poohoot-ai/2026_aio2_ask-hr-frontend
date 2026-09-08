@@ -117,7 +117,6 @@ def api(method: str, path: str, **kwargs):
             raise ApiError(
                 "오늘 쓸 수 있는 AI 요청 횟수를 다 썼습니다. "
                 "무료 등급은 모델마다 하루 요청 수가 정해져 있습니다. "
-                "내일 다시 시도하거나 강사에게 알리세요."
             )
         raise ApiError(f"답변을 만들지 못했습니다. {detail}")
 
