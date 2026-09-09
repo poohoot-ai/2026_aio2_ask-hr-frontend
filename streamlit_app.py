@@ -91,9 +91,6 @@ def render_sidebar(conversations: list) -> None:
     with st.sidebar:
         workspace_brand()
         with st.container(key="sidebar_navigation"):
-            # 로그인한 사용자 이메일 출력
-            # st.caption(st.session_state.user_email)
-
             if st.button("홈", icon=":material/home:", width="stretch"):
                 st.session_state.current_page = "chat"
 
@@ -140,6 +137,10 @@ def render_sidebar(conversations: list) -> None:
                     )
             else:
                 st.caption("대화를 시작하세요.")
+
+        # 로그인한 사용자 이메일 출력
+        clean_email = st.session_state.user_email.replace("@", "@\u200b")
+        st.caption(clean_email)              
 
 
 def render_empty(message: str, hint: str) -> None:
@@ -316,6 +317,7 @@ def confirm_sign_out() -> None:
     if cancel.button("취소", key="cancel_sign_out", width="stretch"):
         st.rerun()
     if confirm.button("로그아웃", key="confirm_sign_out", type="primary", width="stretch"):
+        st.session_state.current_page = "chat"
         sign_out()
 
 
