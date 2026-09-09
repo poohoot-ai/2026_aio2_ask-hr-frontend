@@ -50,9 +50,14 @@ def apply_workspace_style():
 [data-testid="stChatMessageAvatarUser"], [data-testid="stChatMessageAvatarAssistant"] {border-radius:8px;}
 [data-testid="stChatMessageContent"] p {line-height:1.7;}
 [data-testid="stChatInput"] {border:1px solid color-mix(in srgb,currentColor 30%,transparent);border-radius:9px;}
+/* 회원가입·로그아웃 다이얼로그 뒤의 화면을 명확하게 가린다. */
+[data-testid="stDialog"] {background:rgba(0,0,0,0.7) !important;}
 .st-key-login_panel {max-width:460px;margin:6vh auto 0;padding:32px;
  border:1px solid color-mix(in srgb,currentColor 18%,transparent);border-radius:12px;}
 .st-key-login_panel h1 {font-size:28px;letter-spacing:-.8px;}
+.st-key-signup_link {margin-top:12px;padding-top:18px;text-align:center;
+ border-top:1px solid color-mix(in srgb,currentColor 14%,transparent);}
+.st-key-signup_link [data-testid="stCaptionContainer"] {text-align:center;}
 .st-key-welcome_panel {max-width:760px;margin:clamp(24px,8vh,80px) auto;padding:36px 24px;
  border:1px solid color-mix(in srgb,currentColor 14%,transparent);border-radius:12px;
  background:color-mix(in srgb,currentColor 2%,transparent);}
