@@ -111,7 +111,7 @@ def render_sidebar(conversations: list) -> None:
                 st.session_state.current_page = "analytics"
 
             if st.button("로그아웃", icon=":material/logout:", width="stretch"):
-                sign_out()
+                confirm_sign_out()
 
         st.divider()
 
@@ -238,6 +238,40 @@ def render_conversation(conversation_id: str) -> None:
     if answer := st.chat_input("AskHR에 메시지 보내기"):
         ask(conversation_id, answer)      
 
+def complete_login(result: dict) -> None:
+    st.session_state.access_token = result["access_token"]
+    st.session_state.user_email = result["email"]
+    st.session_state.expired_notice = None
+    st.rerun()
+
+
+@st.dialog("회원가입")
+def render_signup() -> None:
+    st.caption("AskHR 계정을 만들고 사내 제도를 편하게 물어보세요.")
+    with st.form("signup_form"):
+        email = st.text_input("이메일", placeholder="you@example.com", key="signup_email")
+        password = st.text_input("비밀번호", type="password", key="signup_password")
+        confirmation = st.text_input("비밀번호 확인", type="password", key="signup_confirmation")
+        submitted = st.form_submit_button("가입하기", type="primary", width="stretch")
+    if not submitted:
+        return
+    if not email.strip() or not password:
+        st.error("이메일과 비밀번호를 모두 입력하세요.")
+        return
+    if password != confirmation:
+        st.error("비밀번호가 일치하지 않습니다.")
+        return
+    try:
+        result = api("POST", "/auth/signup", json={"email": email.strip(), "password": password})
+    except ApiError as error:
+        st.error(str(error))
+        return
+    if result.get("access_token"):
+        complete_login(result)
+    else:
+        st.success("회원가입이 완료되었습니다. 이메일 인증이 필요한 경우 받은 메일을 확인한 뒤 로그인해 주세요.")
+
+
 def render_login() -> None:
     """비로그인 상태의 화면 - 전체영역."""
     # 세션만료 확인
@@ -246,20 +280,16 @@ def render_login() -> None:
 
     st.write("사용 기록은 개인 계정에 저장됩니다.")
 
-    # email, password 입력
-    # api / auth/login, /auth/signup 호출
+    with st.form("login_form", border=False):
+        email = st.text_input("이메일", placeholder="you@example.com")
+        password = st.text_input("비밀번호", type="password")
+        submitted = st.form_submit_button("로그인", type="primary", width="stretch")
+    with st.container(key="signup_link"):
+        st.caption("아직 계정이 없으신가요?")
+        if st.button("회원가입", width="stretch"):
+            render_signup()
 
-    email = st.text_input("이메일", placeholder="you@example.com")
-    password = st.text_input("비밀번호", type="password")
-
-    login_column, signup_column = st.columns(2)
-    action = None
-    if login_column.button("로그인", type="primary", width="stretch"):
-        action = "login"
-    if signup_column.button("회원가입", width="stretch"):
-        action = "signup"
-
-    if not action:
+    if not submitted:
         return
     if not email or not password:
         st.error("이메일과 비밀번호를 모두 입력하세요.")
@@ -267,21 +297,27 @@ def render_login() -> None:
 
     try:
         result = api(
-            "POST", f"/auth/{action}", json={"email": email, "password": password}
+            "POST", "/auth/login", json={"email": email, "password": password}
         )
     except ApiError as error:
         st.error(str(error))
         return
 
     if not result.get("access_token"):
-        # 가입은 됐는데 토큰이 없는 경우가 있다 (이메일 확인이 켜져 있을 때).
-        st.error("가입은 되었지만 바로 로그인되지 않았습니다.")
+        st.error("로그인되지 않았습니다. 이메일 인증 여부를 확인해 주세요.")
         return
 
-    st.session_state.access_token = result["access_token"]
-    st.session_state.user_email = result["email"]
-    st.session_state.expired_notice = None
-    st.rerun()
+    complete_login(result)
+
+@st.dialog("로그아웃")
+def confirm_sign_out() -> None:
+    st.write("정말 로그아웃하시겠어요?")
+    cancel, confirm = st.columns(2)
+    if cancel.button("취소", key="cancel_sign_out", width="stretch"):
+        st.rerun()
+    if confirm.button("로그아웃", key="confirm_sign_out", type="primary", width="stretch"):
+        sign_out()
+
 
 def sign_out(notice: str | None = None) -> None:
     """로그인 관련 상태를 한 번에 지운다.
